@@ -8,7 +8,6 @@
  * (4) print関数を削除して、外部にもっと凝ったものを実装する
  */ 
 
-//#include <iomanip> //　マニピュレータ
 using namespace std;
 
 template<class T> class rbtree {

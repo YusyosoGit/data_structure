@@ -20,8 +20,9 @@
 #include <iomanip> // マニピュレータ
 #include "rbtree.h"
 
-#define E int
 using namespace std;
+
+#define E int
 //E elem[] = {0, 2, 9, 10, 12, 5, 3, 29, 20, 16};
 
 // 引数で受け取った赤黒木を標準出力する
