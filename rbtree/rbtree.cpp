@@ -25,15 +25,18 @@ using namespace std;
 #define E int
 //E elem[] = {0, 2, 9, 10, 12, 5, 3, 29, 20, 16};
 
-// 引数で受け取った赤黒木を標準出力する
+/* 引数で受け取った赤黒木を標準出力する
+ * 一行につき一個の要素を表示。
+ * 深さが増すほど右寄りに表示する
+ */
 template<class T>
 class printer
 {
 	typedef pair<T, T> pr_val;
 	typedef map<int, pr_val> bmap;
 	class bmap::iterator it;// class はprinter<T>::bemap::iteratorの前に必要
-	bmap bough;
-	const rbtree<T> &tree;
+	bmap bough;			// 横枝：上限と下限の値に挟まれた範囲
+		const rbtree<T> &tree;
 public:
 	printer(const rbtree<T> &rbt);
 	void out(const struct rbtree<T>::node *v, int dep, int lr);
@@ -47,37 +50,31 @@ printer<T>::printer(const rbtree<T> &rbt):
 	cerr << hex << uppercase;
 }
 
+/* 関数：指定のノードを指定の深さに表示
+ * 引数１：ノード
+ * 引数２：深さ
+ * 引数３：親ノードとの関係 0:親なし（根） 1:長子 2:次子 
+ */
 template<class T>
 void printer<T>::out(const struct rbtree<T>::node *v, int dep, int lr)
 {
 	if (v == tree.nil) {
-		if (lr != 2) return;
-		else {
-			bough.erase(dep);//長子不在の場合、親の枝をここで消す
-			return;
-		}
+		return;
 	}
-	// いずれかの子がいる場合範囲登録
+	// いずれかの子がいる場合、その深さをキーにして範囲登録
 	if (v->ch[0] != tree.nil && v->ch[1] != tree.nil) {
-		pr_val pr;
-		if (v->ch[1] == tree.nil) {
-			pr = make_pair(v->ch[0]->key, v->key);
-		}
-		else if (v->ch[0] == tree.nil) {
-			pr = make_pair(v->key, v->ch[1]->key);
-		}
-		else {
-			pr = make_pair(v->ch[0]->key, v->ch[1]->key);
-		}
+		pr_val pr = make_pair(v->key, v->key);
+		if (v->ch[0] != tree.nil) pr.first = v->ch[0]->key;
+		if (v->ch[1] != tree.nil) pr.second = v->ch[1]->key;
 		bough.insert(make_pair(dep+1, pr));
 	}
-	out(v->ch[1], dep+1, 1);
-	// 枝部分の表示
+	// 再帰呼出し: 次子（右の子）を指定
+	out(v->ch[1], dep+1, 2);
+	// 自分より浅い位置にある横枝の表示
 	for (int i=0; i< dep; i++) {
-		//iterator::bmap it= bough.find(i);
-		//bmap::iterator it;
 		it = bough.find(i);
-		if (it == bough.end() || v->key > it->second.second) {
+		if (it == bough.end() || v->key < it->second.first || it->second.second < v->key) {
+			// 横枝が無いもしくは横枝の範囲外
 			cerr << "  ";
 		}
 		else {
@@ -85,13 +82,13 @@ void printer<T>::out(const struct rbtree<T>::node *v, int dep, int lr)
 		}
 	}
 
-	//cerr << (!lr? "--": (lr == 1?  "「": "Ｌ"));
-	cerr << (!lr? "─ ": (lr == 1?  "┌ ": "└ "));
+	cerr << (!lr? "─ ": (lr == 2?  "┌ ": "└ "));
 	cerr << (v->red? "\x1b[31;1m": "\x1b[30;1m");// "1"はBoldのオプション
 	cerr << right << setfill('0') << setw(2) << v->key << endl;
 	cerr << "\x1b[0m";
-	if (lr == 2) bough.erase(dep);//長子の場合、親の枝は自分を表示したあとで消す
-	out(v->ch[0], dep+1, 2);
+	// 再帰呼出し：長子（左の子）
+	out(v->ch[0], dep+1, 1);
+	bough.erase(dep+1);
 }
 
 
@@ -103,7 +100,9 @@ int main(int argc, char * argv[])
 	printer<E> dsp(tree);
 
     if (argc == 1) {
-        cout << "USAGE:" << argv[0] << " <arg1> [arg2]" << endl;
+		cout << "USAGE1:" << argv[0] << " <file of_specific elements to add or remove>" << endl;
+        cout << "USAGE2:" << argv[0] << " <num of elements> [file of specific elements to add or remove]" << endl;
+
         return 0;
     }
 	// 要素のあるファイル名	
