@@ -15,8 +15,8 @@
 #include <string.h>
 #include <fstream>
 #include <vector>
-#include <map>
 #include <iostream>
+#include <stdexcept>// 数値に変換できなかったとき例外を投げる
 #include <iomanip> // マニピュレータ
 #include "rbtree.h"
 
@@ -33,14 +33,14 @@ template<class T>
 class printer
 {
 	typedef pair<T, T> pr_val;
-	typedef map<int, pr_val> bmap;
-	class bmap::iterator it;// class はprinter<T>::bemap::iteratorの前に必要
-	bmap bough;			// 横枝：上限と下限の値に挟まれた範囲
+	typedef vector<pr_val> bcrumb;
+	class bcrumb::iterator it;// class はprinter<T>::bcrumb::iteratorの前に必要
+	bcrumb bough;			// 横枝：上限と下限の値に挟まれた範囲
 		const rbtree<T> &tree;
 public:
 	printer(const rbtree<T> &rbt);
 	void out(const struct rbtree<T>::node *v, int dep, int lr);
-	void out() {out(tree.root, 0, 0);}
+	void out();
 };
 
 template<class T>
@@ -53,7 +53,7 @@ printer<T>::printer(const rbtree<T> &rbt):
 /* 関数：指定のノードを指定の深さに表示
  * 引数１：ノード
  * 引数２：深さ
- * 引数３：親ノードとの関係 0:親なし（根） 1:長子 2:次子 
+ * 引数３：親ノードとの関係 0:親なし（根） 1:長子(左) 2:次子(右) 
  */
 template<class T>
 void printer<T>::out(const struct rbtree<T>::node *v, int dep, int lr)
@@ -61,19 +61,19 @@ void printer<T>::out(const struct rbtree<T>::node *v, int dep, int lr)
 	if (v == tree.nil) {
 		return;
 	}
-	// いずれかの子がいる場合、その深さをキーにして範囲登録
-	if (v->ch[0] != tree.nil && v->ch[1] != tree.nil) {
-		pr_val pr = make_pair(v->key, v->key);
-		if (v->ch[0] != tree.nil) pr.first = v->ch[0]->key;
-		if (v->ch[1] != tree.nil) pr.second = v->ch[1]->key;
-		bough.insert(make_pair(dep+1, pr));
-	}
+	// 横枝の範囲登録
+	pr_val pr = make_pair(v->key, v->key);
+	if (v->ch[0] != tree.nil) pr.first = v->ch[0]->key;
+	if (v->ch[1] != tree.nil) pr.second = v->ch[1]->key;
+	bough.push_back(pr);
+
 	// 再帰呼出し: 次子（右の子）を指定
 	out(v->ch[1], dep+1, 2);
+
 	// 自分より浅い位置にある横枝の表示
-	for (int i=0; i< dep; i++) {
-		it = bough.find(i);
-		if (it == bough.end() || v->key < it->second.first || it->second.second < v->key) {
+	auto it= bough.begin();
+	for (int i=0; i< dep; i++, it++) {
+		if (v->key < (*it).first || (*it).second < v->key) {
 			// 横枝が無いもしくは横枝の範囲外
 			cerr << "  ";
 		}
@@ -82,15 +82,31 @@ void printer<T>::out(const struct rbtree<T>::node *v, int dep, int lr)
 		}
 	}
 
+	// 葉または節の表示
 	cerr << (!lr? "─ ": (lr == 2?  "┌ ": "└ "));
 	cerr << (v->red? "\x1b[31;1m": "\x1b[30;1m");// "1"はBoldのオプション
 	cerr << right << setfill('0') << setw(2) << v->key << endl;
 	cerr << "\x1b[0m";
-	// 再帰呼出し：長子（左の子）
+
+	// 再帰呼出し：長子（左の子）を指定
 	out(v->ch[0], dep+1, 1);
-	bough.erase(dep+1);
+
+	// 横枝を除去
+	bough.pop_back();
 }
 
+template<class T>
+void printer<T>::out()
+{
+	if (tree.size() == 0) {
+		cerr << "─ " << endl;
+		return;
+	}
+	pr_val pr = make_pair(tree.root->key, tree.root->key);
+	bough.push_back(pr);
+
+	out(tree.root, 0, 0);
+}
 
 int main(int argc, char * argv[])
 {
@@ -108,14 +124,22 @@ int main(int argc, char * argv[])
 	// 要素のあるファイル名	
 	const char * entry;
 	int nElems;
-	nElems = atoi(argv[1]);
-	bool b1stArgNum = (nElems != 0);
+	bool bNumberAssigned;
+	try {
+		nElems = std::stoi(argv[1]);
+		bNumberAssigned = true;
+		cout << "generating " << nElems << " element(s)." << endl;
+	}
+	catch (...) {
+		nElems = 0;
+		bNumberAssigned = false;
+	}
 
 	switch ( argc ) 
 	{
 	case 2:
 		// 引数一つだけ
-		if (b1stArgNum)
+		if (bNumberAssigned)
 			// 引数が要素数／ファイル名なし
 			entry = NULL;
 		else
@@ -125,17 +149,20 @@ int main(int argc, char * argv[])
 
 	case 3:
 		// 引数二つ
-		if (!b1stArgNum) 
-			// 引数１の要素数が０のため異常終了
+		if (!bNumberAssigned) { 
+			// 引数１が数値ではないため異常終了
+			cout << "arg1 ought to be numeric." << endl;
 			return 1;
-		else
+		}
+		else {
 			// 引数１が要素数／引数２がファイル名
 			entry = argv[2];
+		}
 		break;
 
 	default:
 		// エラー
-		cout << "too may arguments" << endl;
+		cout << "bad arguments." << endl;
 		return 1;
 	}
 
@@ -161,7 +188,11 @@ int main(int argc, char * argv[])
 /*	for (int i= 0, n= sizeof(elem)/ sizeof(E); i < n; i++)
 		tree.insert(elem[i]);
 */
-		if (!in) return (1);
+		if (!in) {
+			cout << "file " << entry << " not found." << endl;
+			return (1);
+		}
+
 
         cout << hex << uppercase;
 		E e;
