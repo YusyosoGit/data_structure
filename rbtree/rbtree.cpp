@@ -116,8 +116,8 @@ int main(int argc, char * argv[])
 	printer<E> dsp(tree);
 
     if (argc == 1) {
-		cout << "USAGE1:" << argv[0] << " <file of_specific elements to add or remove>" << endl;
-        cout << "USAGE2:" << argv[0] << " <num of elements> [file of specific elements to add or remove]" << endl;
+		cout << "USAGE1:" << argv[0] << " <file of elements to add>" << endl;
+        cout << "USAGE2:" << argv[0] << " <num of elements> [file of elements to add or remove]" << endl;
 
         return 0;
     }
