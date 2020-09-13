@@ -18,7 +18,7 @@
 #include <iostream>
 #include <stdexcept>// 数値に変換できなかったとき例外を投げる
 #include <iomanip> // マニピュレータ
-#include "rbtree.h"
+#include "bsearch_tree.h"
 
 using namespace std;
 
@@ -36,15 +36,15 @@ class printer
 	typedef vector<pr_val> bcrumb;
 	class bcrumb::iterator it;// class はprinter<T>::bcrumb::iteratorの前に必要
 	bcrumb bough;			// 横枝：上限と下限の値に挟まれた範囲
-	const rbtree<T> &tree;
+	const bsearch_tree<T> &tree;
 public:
-	printer(const rbtree<T> &rbt);
-	void out(const struct rbtree<T>::node *v, int dep, int lr);
+	printer(const bsearch_tree<T> &rbt);
+	void out(const struct bsearch_tree<T>::node *v, int dep, int lr);
 	void out();
 };
 
 template<class T>
-printer<T>::printer(const rbtree<T> &rbt):
+printer<T>::printer(const bsearch_tree<T> &rbt):
 	tree(rbt)
 {
 	cerr << hex << uppercase;
@@ -56,7 +56,7 @@ printer<T>::printer(const rbtree<T> &rbt):
  * 引数３：親ノードとの関係 0:親なし（根） 1:長子(左) 2:次子(右) 
  */
 template<class T>
-void printer<T>::out(const struct rbtree<T>::node *v, int dep, int lr)
+void printer<T>::out(const struct bsearch_tree<T>::node *v, int dep, int lr)
 {
 	if (v == tree.nil) {
 		return;
@@ -84,9 +84,9 @@ void printer<T>::out(const struct rbtree<T>::node *v, int dep, int lr)
 
 	// 葉または節の表示
 	cerr << (!lr? "─ ": (lr == 2?  "┌ ": "└ "));
-	cerr << (v->red? "\x1b[31;1m": "\x1b[30;1m");// "1"はBoldのオプション
+    cerr << "\x1b[32;1m"; // 緑色、太字
 	cerr << right << setfill('0') << setw(2) << v->key << endl;
-	cerr << "\x1b[0m";
+    cerr << "\x1b[0m";
 
 	// 再帰呼出し：長子（左の子）を指定
 	out(v->ch[0], dep+1, 1);
@@ -111,7 +111,7 @@ void printer<T>::out()
 int main(int argc, char * argv[])
 {
 	// 要素ゼロのリスト生成
-    rbtree<E> tree;
+    bsearch_tree<E> tree;
     // 出力プログラムに通知
 	printer<E> dsp(tree);
 

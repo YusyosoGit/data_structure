@@ -77,6 +77,7 @@ template<class T>
 rbtree<T>::rbtree():
     sz(0)
 {
+    // nil と root の初期化
     nil = new node();
     nil->red = 0;
     root = nil->par = nil->ch[0] = nil->ch[1] = nil;
@@ -247,7 +248,7 @@ void rbtree<T>::erase(node *z)
     delete z;
 }
 
-/* 部分木uの親ノードに部分木vを接続
+/* 部分木uの親ノードに部分木vを付け替え
  */
 template<class T>
 void rbtree<T>::replace(node *u, node *v) 
