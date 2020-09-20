@@ -15,6 +15,7 @@
 #include <string.h>
 #include <fstream>
 #include <vector>
+#include <typeinfo>
 #include <iostream>
 #include <stdexcept>// 数値に変換できなかったとき例外を投げる
 #include <iomanip> // マニピュレータ
@@ -22,7 +23,10 @@
 
 using namespace std;
 
+// コンパイルオプション
 #define E int
+#define TREE_CLASS rbtree
+
 //E elem[] = {0, 2, 9, 10, 12, 5, 3, 29, 20, 16};
 
 /* 引数で受け取った赤黒木を標準出力する
@@ -36,18 +40,36 @@ class printer
 	typedef vector<pr_val> bcrumb;
 	class bcrumb::iterator it;// class はprinter<T>::bcrumb::iteratorの前に必要
 	bcrumb bough;			// 横枝：上限と下限の値に挟まれた範囲
-	const rbtree<T> &tree;
+	const bsearch_tree<T> &tree;
 public:
-	printer(const rbtree<T> &rbt);
-	void out(const struct rbtree<T>::node *v, int dep, int lr);
+	printer(const bsearch_tree<T> &rbt);
+    void out(const struct bsearch_tree<T>::node *v);
+	void out(const struct bsearch_tree<T>::node *v, int dep, int lr);
 	void out();
 };
 
 template<class T>
-printer<T>::printer(const rbtree<T> &rbt):
+printer<T>::printer(const bsearch_tree<T> &rbt):
 	tree(rbt)
 {
 	cerr << hex << uppercase;
+}
+
+/*
+ * ノードを表示する
+*/
+template<class T>
+void printer<T>::out(const struct bsearch_tree<T>::node *v)
+{
+    if (typeid(*v) == typeid(const struct rbtree<T>::rb_node)) {
+        const struct rbtree<T>::rb_node* p= static_cast<const struct rbtree<T>::rb_node*>(v);
+        cerr << (p->red? "\x1b[31;1m": "\x1b[30;1m");
+    }
+    else {
+        cerr << "\x1b[32;1m";// "1"はBoldのオプション
+    }
+    cerr << right << setfill('0') << setw(2) << v->key << endl;
+    cerr << "\x1b[0m";
 }
 
 /* 関数：指定のノードを指定の深さに表示
@@ -56,7 +78,7 @@ printer<T>::printer(const rbtree<T> &rbt):
  * 引数３：親ノードとの関係 0:親なし（根） 1:長子(左) 2:次子(右) 
  */
 template<class T>
-void printer<T>::out(const struct rbtree<T>::node *v, int dep, int lr)
+void printer<T>::out(const struct bsearch_tree<T>::node *v, int dep, int lr)
 {
 	if (v == tree.nil) {
 		return;
@@ -84,9 +106,7 @@ void printer<T>::out(const struct rbtree<T>::node *v, int dep, int lr)
 
 	// 葉または節の表示
 	cerr << (!lr? "─ ": (lr == 2?  "┌ ": "└ "));
-	cerr << (v->red? "\x1b[31;1m": "\x1b[30;1m");// "1"はBoldのオプション
-	cerr << right << setfill('0') << setw(2) << v->key << endl;
-	cerr << "\x1b[0m";
+	out(v); 
 
 	// 再帰呼出し：長子（左の子）を指定
 	out(v->ch[0], dep+1, 1);
@@ -111,7 +131,7 @@ void printer<T>::out()
 int main(int argc, char * argv[])
 {
 	// 要素ゼロのリスト生成
-    rbtree<E> tree;
+    TREE_CLASS<E> tree;
     // 出力プログラムに通知
 	printer<E> dsp(tree);
 

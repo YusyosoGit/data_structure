@@ -7,67 +7,59 @@
  * (3) 削除後の全般修正は削除したノードの親を中心に実施
  * (4) print関数を削除して、外部にもっと凝ったものを実装する
  */ 
+#include "bsearch_tree.h"
 
 using namespace std;
 
 template<class T> 
-class rbtree {
+class rbtree: public bsearch_tree<T> {
 public:
-    struct node;
-
-    unsigned sz;
-    node *root, *nil;
+    struct rb_node;
+    // テンプレートの親クラスのメンバ変数を可視化
+    using bsearch_tree<T>::nil;
+    using bsearch_tree<T>::root;
+    using bsearch_tree<T>::sz;
 
     // デフォルトコンストラクタ
     rbtree();
     // デストラクタ
-    ~rbtree();
+    ~rbtree() {}
 
-    // サイズを返す
-    unsigned size() const { return sz; }
-
-    // 同一キーをもつノードを返す
-    node *find(T key); 
+    // 親の全ての関数を可視化
+    using bsearch_tree<T>::erase;
 
     // 木に新しい要素を追加する。すでにキーが登録されている場合追加できない
-    pair<bool, node *> insert(T key); 
-
-    // 木から要素を削除
-    void erase(T key) { erase(find(key)); }
+    virtual pair<bool, typename bsearch_tree<T>::node *> insert(T key);
 
     // 指定ノードを削除する
-    void erase(node *z);
+    void erase(rb_node *z);
 
 private:
     // xを中心にd方向に回転
-    void rotate(node *x, int d); 
+    void rotate(typename bsearch_tree<T>::node *x, int d); 
 
     // 追加後の木を修正する
-    void insert_update(node *z);
-
-    // 部分木uの親ノードに部分木vを接続
-    void replace(node *u, node *v);
-    
-    // 部分木xの最小ノードを取得
-    node *minimum(node* x);
+    void insert_update(rb_node *z);
 
     // 削除後の木を修正する。d によりその子x の位置を指定
-    void erase_update(node *y, int d);
+    void erase_update(rb_node *y, int d);
 };
 
-/* ノードの定義
+/* RBノードの定義
  */
+
 template<class T>
-struct rbtree<T>::node {
-    T key;
-    int red;
-    node *par, *ch[2]; // {left, right}
-    node() {}
-    node(T key):key(key),red(1) {
-        //par = ch[0] = ch[1] = NULL;
-    }
+struct rbtree<T>::rb_node : public bsearch_tree<T>::node
+{
+    rb_node() {}
+    rb_node(T key): bsearch_tree<T>::node(key),red(1) {}
     // 自分が親から見てどちら側の子か取得(0=左、1=右)
-    int getChildPos() const { return (this == par->ch[0])? 0: 1; }
+    int red;
+    /*
+    using bsearch_tree<T>::node::key;
+    using bsearch_tree<T>::node::par;
+    using bsearch_tree<T>::node::ch;
+    */
 };
 
 /* コンストラクタ
@@ -75,34 +67,24 @@ struct rbtree<T>::node {
  */
 template<class T>
 rbtree<T>::rbtree():
-    sz(0)
+    bsearch_tree<T>()
 {
-    // nil と root の初期化
-    nil = new node();
-    nil->red = 0;
-    root = nil->par = nil->ch[0] = nil->ch[1] = nil;
-}
+    rb_node *p = new rb_node();
+    p->red = 0;
 
-/* デストラクタ
-    〜後始末〜
- */
-template<class T>
-rbtree<T>::~rbtree()
-{
-    while (root != nil) {
-        erase(root);
-    }
     delete nil;
+    nil = p;
+    root = nil->par = nil->ch[0] = nil->ch[1] = nil;    
 }
 
 /* xを中心にd方向に回転
  * コメントはわかりやすいようにd=0の場合に統一
  */
 template<class T>
-void rbtree<T>::rotate(node *x, int d) {
+void rbtree<T>::rotate(typename bsearch_tree<T>::node *x, int d) {
     int e = d^1;
-    node *y = x->ch[e];
-    node *t = y->ch[d];
+    typename bsearch_tree<T>::node *y = x->ch[e];
+    typename bsearch_tree<T>::node *t = y->ch[d];
     // yの左の子をxの右の子にする
     x->ch[e] = t;
     if (t != nil) t->par = x;
@@ -115,68 +97,54 @@ void rbtree<T>::rotate(node *x, int d) {
     x->par = y;
 }
 
-/* 同一キーをもつノードを返す
- */ 
-template<class T>
-typename rbtree<T>::node *rbtree<T>::find(T key)
-{
-    node *x = root;
-    while(x != nil) {
-        if(key == x->key) return x;
-        x = (key < x->key)? x->ch[0]: x->ch[1];
-    }
-    return x;
-}
-
 /* 木に新しい要素を追加する。すでにキーが登録されている場合追加できない
  */
 template<class T>
-std::pair<bool, typename rbtree<T>::node *> rbtree<T>::insert(T key)
+std::pair<bool, typename bsearch_tree<T>::node *> rbtree<T>::insert(T key)
 {
-    node *x = root, *y = nil;
-    int d;
-    // キーでノードを検索
-    while(x != nil) {
-        if(key == x->key) 
+    typename bsearch_tree<T>::node *x = root, *y = nil;  
+    // キーでノードを検索         
+    while(x != nil) {             
+        if(key == x->key)         
             // すでにキーが登録していたら、そのノードを返す
-            return make_pair(false, x);
-        y = x;
+            return make_pair(false, x); 
+        y = x;                    
         x = (key < x->key)? x->ch[0]: x->ch[1];
-    }
-    
+    }                             
+                                  
     // 見つからないので新規作成
-    sz++;
-    node *z = new node(key);
-    if (sz == 1) {
+    sz++;                         
+    rb_node *z = new rb_node(key);   
+    if (sz == 1) {                
         z->par = z->ch[0]= z->ch[1] = nil;
-        root = z;
-    }
-    else {
+        root = z;                 
+    }                             
+    else {                        
         ((key < y->key)? y->ch[0]: y->ch[1]) = z;
-        z->par = y;
+        z->par = y;               
         z->ch[0] = z->ch[1] = nil;
-    }
+    }                             
     insert_update(z);
-    return make_pair(true, z);
+    return make_pair(true, z);            
 }
 
 /* 追加後の木を修正する
  */
 template<class T>
-void rbtree<T>::insert_update(node *z)
+void rbtree<T>::insert_update(rb_node *z)
 {
-    node *y;
+    rb_node *y;
     // 親yが赤の間繰り返す
-    while((y = z->par)->red) {
+    while((y = static_cast<rb_node*>(z->par))->red) {
         int d = y->getChildPos(), e = d^1;
         // xはzのおじ
-        node *x = y->par->ch[e];
+        rb_node *x = static_cast<rb_node*>(y->par->ch[e]);
         if(x->red) {
             // ①おじが赤の場合
             y->red = 0;
             x->red = 0;
-            y->par->red = 1;
-            z = y->par;
+            static_cast<rb_node*>(y->par)->red = 1;
+            z = static_cast<rb_node*>(y->par);
         }
         else {
             // ②おじが黒の場合
@@ -188,23 +156,23 @@ void rbtree<T>::insert_update(node *z)
             else {
                 // ③
                 y->red = 0;
-                y->par->red = 1;
+                static_cast<rb_node*>(y->par)->red = 1;
                 rotate(y->par,e);
             }
         }
     }
-    root->red = 0;
+    static_cast<rb_node*>(root)->red = 0;
 }
 
 
 /* 指定ノードを削除する
  */
 template<class T>
-void rbtree<T>::erase(node *z)
+void rbtree<T>::erase(rb_node *z)
 {
     if(z == nil) return;
     sz--;
-    node *w;                // 修正するノードの親（修正する部分木の根）ノード
+    rb_node *w;                // 修正するノードの親（修正する部分木の根）ノード
     int d;                  // 修正するノードは左右どちらの子か
     int ex_col;             // 除去するノードの色を記憶
     if (z->ch[0] == nil || z->ch[1] == nil) {
@@ -217,7 +185,7 @@ void rbtree<T>::erase(node *z)
     }
     else {
         // 削除ノードにこどもが2人
-        node *y;            // 部分木の最小ノードの位置
+        rb_node *y;            // 部分木の最小ノードの位置
         y = minimum(z->ch[1]);
         ex_col = y->red;
         if(y->par == z) {
@@ -248,36 +216,16 @@ void rbtree<T>::erase(node *z)
     delete z;
 }
 
-/* 部分木uの親ノードに部分木vを付け替え
- */
-template<class T>
-void rbtree<T>::replace(node *u, node *v) 
-{
-    node *y = u->par;
-    if (y == nil) root = v;
-    else y->ch[u->getChildPos()] = v;
-    if (v != nil) v->par = y;
-}
-    
-/* 部分木xの最小ノードを取得
- */
-template<class T>
-typename rbtree<T>::node *rbtree<T>::minimum(node* x) 
-{
-    while(x->ch[0] != nil) x = x->ch[0];
-    return x;
-}
-
 /* 削除後の木を修正する
  * d によりその子x の位置を指定
  */
 template<class T>
-void rbtree<T>::erase_update(node *y, int d) 
+void rbtree<T>::erase_update(rb_node *y, int d) 
 {
-    node *x;
+    rb_node *x;
     while(y != nil && !(x = y->ch[d])->red) {
         int e = d^1;
-        node *w = y->ch[e];
+        rb_node *w = y->ch[e];
         if(w == nil) {
             // 兄弟ノードは存在しない
             d = y->getChildPos();

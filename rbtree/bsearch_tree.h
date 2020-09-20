@@ -16,7 +16,7 @@ public:
     // デフォルトコンストラクタ
     bsearch_tree();
     // デストラクタ
-    ~bsearch_tree();
+    virtual ~bsearch_tree();
 
     // サイズを返す
     unsigned size() const { return sz; }
@@ -25,13 +25,13 @@ public:
     node *find(T key); 
 
     // 木に新しい要素を追加する。すでにキーが登録されている場合追加できない
-    pair<bool, node *> insert(T key); 
+    virtual pair<bool, node *> insert(T key); 
 
     // 木から要素を削除
     void erase(T key) { erase(find(key)); }
 
     // 指定ノードを削除する
-    void erase(node *z);
+    virtual void erase(node *z);
 
 private:
 
@@ -53,6 +53,7 @@ struct bsearch_tree<T>::node {
     node() {}
     node(T key):key(key) {}
     // 自分が親から見てどちら側の子か取得(0=左、1=右)
+    virtual ~node() {}
     int getChildPos() const { return (this == par->ch[0])? 0: 1; }
 };
 
@@ -63,7 +64,9 @@ template<class T>
 bsearch_tree<T>::bsearch_tree():
     sz(0)
 {
+    // nilは実体を持つ
     nil = new node();
+    // rootはポインタだけ
     root = nil->par = nil->ch[0] = nil->ch[1] = nil;
 }
 
