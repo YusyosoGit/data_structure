@@ -25,9 +25,11 @@ using namespace std;
 
 // コンパイルオプション
 #define E int
-#define TREE_CLASS rbtree
 
-//E elem[] = {0, 2, 9, 10, 12, 5, 3, 29, 20, 16};
+enum TREE_TYPE {
+   BSEARCH = 0,
+   RED_BLACK,
+};
 
 /* 引数で受け取った赤黒木を標準出力する
  * 一行につき一個の要素を表示。
@@ -128,117 +130,141 @@ void printer<T>::out()
 	out(tree.root, 0, 0);
 }
 
+/*
+ * エントリーポイント
+ */ 
 int main(int argc, char * argv[])
 {
-	// 要素ゼロのリスト生成
-    TREE_CLASS<E> tree;
-    // 出力プログラムに通知
-	printer<E> dsp(tree);
-
     if (argc == 1) {
-		cout << "USAGE1:" << argv[0] << " <file of elements to add>" << endl;
-        cout << "USAGE2:" << argv[0] << " <num of elements> [file of elements to add or remove]" << endl;
-
+        cout << "USAGE1:" << argv[0] << " <ファイル>" << endl;
+        cout << "USAGE2:" << argv[0] << " <要素数> [ファイル]" << endl;
+        cout << "Options:" << endl;
+        cout << "-o, --ordinary         通常の２分木" << endl;
+        cout << "-r, --red_and_black    赤黒木（デフォルト)" << endl;
+        cout << "-e, --elements         要素数：自動生成する要素の数" << endl;
+        cout << "-f, --file             ファイル：追加・削除の要素が記されたファイル" << endl;
+        cout << "-s, --seed             乱数の種（要素自動生成時に使用）" << endl;
+        cout << endl;
         return 0;
     }
-	// 要素のあるファイル名	
-	const char * entry;
-	int nElems;
-	bool bNumberAssigned;
-	try {
-		nElems = std::stoi(argv[1]);
-		bNumberAssigned = true;
-		cout << "generating " << nElems << " element(s)." << endl;
-	}
-	catch (...) {
-		nElems = 0;
-		bNumberAssigned = false;
-	}
 
-	switch ( argc ) 
-	{
-	case 2:
-		// 引数一つだけ
-		if (bNumberAssigned)
-			// 引数が要素数／ファイル名なし
-			entry = NULL;
-		else
-			// 要素数なし／引数がファイル名
-			entry = argv[1];
-		break;
+    const char * entry;
+    int nElems = 0;
+    int seed = 0;
+    int tree_type= RED_BLACK;
 
-	case 3:
-		// 引数二つ
-		if (!bNumberAssigned) { 
-			// 引数１が数値ではないため異常終了
-			cout << "arg1 ought to be numeric." << endl;
-			return 1;
-		}
-		else {
-			// 引数１が要素数／引数２がファイル名
-			entry = argv[2];
-		}
-		break;
+    for (int i=1; i< argc; ) {
+        string opt(argv[i]);
+        try {
 
-	default:
-		// エラー
-		cout << "bad arguments." << endl;
-		return 1;
-	}
+            if (opt == "-o" || opt == "--ordinary") {
+                tree_type = BSEARCH;
+            }
+            else if (opt == "-r" || opt == "--red_and_black") {
+                tree_type = RED_BLACK;
+            }
+            else if (opt == "-e" || opt == "--elements") {
+                if (++i>= argc) throw 0;
+                nElems = std::stoi(argv[i]);
+            }
+            else if (opt =="-f" || opt == "--file") {
+                if (++i>= argc) throw 0;
+                entry = argv[i];
+            }
+            else if (opt =="-s" || opt == "--seed") {
+                if (++i>= argc) throw 0;
+                seed = std::stoi(argv[i]);
+            }
+            else {
+                throw opt;
+            }
+        }
+        catch (std::invalid_argument) {
+            // 非数値
+            cout << argv[i] << " is not numeric." << endl;
+            return 1;
+        }
+        catch (int) {
+            // 引数が少ない
+            cout << "too few arguments." << endl;
+            return 1;
+        }
+        catch (string &opt) {
+            // 引数エラー
+            cout << "bad argument " << "\"" << opt << "\"" << endl;
+            return 1;
+        }
+        catch (...) {
+            // その他のエラー
+            cout << "impossible." << endl;
+            return 1;
+        }
+        i++;
+    }
 
-	if (nElems)
-	{
-		// 要素数未設定の場合要素を設定
-		srand(0);
-		vector<int> deck;
-		deck.reserve(255);
-		for (int i= 0; i< 255; i++) {
-			deck.push_back(i);
-		}
-		for (int i= 0; i< nElems; i++) {
-			int index = rand() % deck.size();
-			tree.insert(deck[index]);
-			deck.erase(deck.begin() + index);
-		}
-	}
+    // 要素ゼロのリスト生成
+    bsearch_tree<E> *tree;
+    if (tree_type == BSEARCH) {
+        tree = new bsearch_tree<E>;
+    }
+    else {
+        tree = new rbtree<E>;
+    }
+    // 出力プログラムに通知
+    printer<E> dsp(*tree);
 
-	if (entry) {
-		// ファイルから要素を読み込む	
-		ifstream in(entry);
-/*	for (int i= 0, n= sizeof(elem)/ sizeof(E); i < n; i++)
-		tree.insert(elem[i]);
-*/
-		if (!in) {
-			cout << "file " << entry << " not found." << endl;
-			return (1);
-		}
+    if (nElems)
+    {
+        cout << "generating " << nElems << " element(s)." << endl;
+        // 要素数未設定の場合要素を設定
+        srand(seed);
+        vector<int> deck;
+        deck.reserve(255);
+        for (int i= 0; i< 255; i++) {
+            deck.push_back(i);
+        }
+        for (int i= 0; i< nElems; i++) {
+            int index = rand() % deck.size();
+            tree->insert(deck[index]);
+            deck.erase(deck.begin() + index);
+        }
+    }
 
+    if (entry) {
+        // ファイルから要素を読み込む
+        ifstream in(entry);
+        if (!in) {
+            cout << "file " << entry << " not found." << endl;
+            return (1);
+        }
 
         cout << hex << uppercase;
-		E e;
-		char str[16], *endptr;
-		while (!in.eof()) {
-			in >> str;
-			e = strtol(str, &endptr, 16);
-			// eofのみでファイルの終わりを正確に検出できないので、終了の印-1を用いる
-			if (e == -1) break;
+        E e;
+        char str[16], *endptr;
+        in >> str;
+        while (!in.eof()) {
+            e = strtol(str, &endptr, 16);
+            // eofのみでファイルの終わりを正確に検出できないので、終了の印-1を用いる
+            //if (e == -1) break;
             cout << right << setfill('0') << setw(2);
             cout << e << ":";
-			auto pr = tree.insert(e);
-			// 同じ数値を入力するとそれを削除する
-			if (!pr.first) {
-				tree.erase(pr.second);
+            auto pr = tree->insert(e);
+            if (!pr.first) {
+                // 既存の値は削除する
+                tree->erase(pr.second);
                 cout << right << setfill('0') << setw(2);
-				cout << e << " erased." << std::endl;
-			}
-			else {
+                cout << e << " erased." << std::endl;
+            }
+            else {
+                // 新規の値は追加する
                 cout << right << setfill('0') << setw(2);
-				cout << e << " inserted." << endl;
-			}
-		}
-	}
-	// １６進、大文字使用、右詰め、０埋め、２桁
-	dsp.out();
-	return 0;
+                cout << e << " inserted." << endl;
+            }
+            in >> str;
+        }
+    }
+    // １６進、大文字使用、右詰め、０埋め、２桁
+    dsp.out();
+    return 0;
 }
 
